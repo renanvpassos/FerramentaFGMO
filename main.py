@@ -88,7 +88,7 @@ def tratar_planilha(df_origem, num_fatura):
 
 # --- INTERFACE DO USUÁRIO (STREAMLIT) ---
 st.set_page_config(page_title="Tratador de Faturas", layout="wide")
-st.title("📂 Tratamento planilha Ferragamo")
+st.title("📂 Tratamento planilha FGMO")
 st.info("Insira a planilha de PO (itens) do jeito que ela vem abaixo.")
 st.markdown("---")
 
