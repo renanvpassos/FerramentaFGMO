@@ -36,40 +36,6 @@ t = threading.Thread(target=monitorar_conexoes, daemon=True)
 t.start()
 
 
-# --- INTERFACE DO USUÁRIO (STREAMLIT) ---
-# Mudado de "wide" para "centered" para centralizar o layout
-st.set_page_config(page_title="Tratador de Faturas", layout="centered")
-
-# --- CSS PERSONALIZADO PARA CENTRALIZAR TÍTULOS E COMPONENTES ---
-st.markdown("""
-    <style>
-        .main .block-container {
-            max-width: 800px;
-            padding-top: 2rem;
-            padding-right: 2rem;
-            padding-left: 2rem;
-            padding-bottom: 2rem;
-        }
-        h1, p {
-            text-align: center;
-        }
-        .stAlert {
-            text-align: center;
-        }
-        .row-widget.stButton {
-            display: flex;
-            justify-content: center;
-        }
-    </style>
-""", unsafe_allow_html=True)
-
-st.title("📂 Tratamento Planilha FGMO")
-st.info("Insira a planilha de PO (itens) do jeito que ela vem abaixo.")
-st.markdown("---")
-
-uploaded_file = st.file_uploader("1. Anexe a planilha original (.xlsx)", type=["xlsx"])
-
-
 # --- LÓGICA DE MANIPULAÇÃO DA PLANILHA ---
 def converter_letra_para_indice(letra):
     """Converte letras de colunas do Excel (A, B, Y...) para índice base-0 do Pandas."""
@@ -102,7 +68,7 @@ def tratar_planilha(df_origem):
     )
 
     # 4. Coluna C: QUANTIDADE (Origem Coluna F)
-    df_final['QUANTIDADE'] = df_dados.iloc[:, converter_let_para_indice('F')]
+    df_final['QUANTIDADE'] = df_dados.iloc[:, converter_letra_para_indice('F')]
 
     # 5. Coluna D: PESOUNITARIO (Origem Coluna G)
     df_final['PESOUNITARIO'] = df_dados.iloc[:, converter_letra_para_indice('G')]
@@ -121,6 +87,38 @@ def tratar_planilha(df_origem):
 
     return df_final
 
+
+# --- INTERFACE DO USUÁRIO (STREAMLIT) ---
+st.set_page_config(page_title="Tratador de Faturas", layout="centered")
+
+# --- CSS PERSONALIZADO PARA CENTRALIZAR TÍTULOS E COMPONENTES ---
+st.markdown("""
+    <style>
+        .main .block-container {
+            max-width: 800px;
+            padding-top: 2rem;
+            padding-right: 2rem;
+            padding-left: 2rem;
+            padding-bottom: 2rem;
+        }
+        h1, p {
+            text-align: center;
+        }
+        .stAlert {
+            text-align: center;
+        }
+        .row-widget.stButton {
+            display: flex;
+            justify-content: center;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+st.title("📂 Tratamento Planilha FGMO")
+st.info("Insira a planilha de PO (itens) do jeito que ela vem abaixo.")
+st.markdown("---")
+
+uploaded_file = st.file_uploader("1. Anexe a planilha original (.xlsx)", type=["xlsx"])
 
 if uploaded_file:
     # Centralizando o botão de processamento com colunas do Streamlit
