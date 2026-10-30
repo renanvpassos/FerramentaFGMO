@@ -36,6 +36,40 @@ t = threading.Thread(target=monitorar_conexoes, daemon=True)
 t.start()
 
 
+# --- INTERFACE DO USUÁRIO (STREAMLIT) ---
+# Mudado de "wide" para "centered" para centralizar o layout
+st.set_page_config(page_title="Tratador de Faturas", layout="centered")
+
+# --- CSS PERSONALIZADO PARA CENTRALIZAR TÍTULOS E COMPONENTES ---
+st.markdown("""
+    <style>
+        .main .block-container {
+            max-width: 800px;
+            padding-top: 2rem;
+            padding-right: 2rem;
+            padding-left: 2rem;
+            padding-bottom: 2rem;
+        }
+        h1, p {
+            text-align: center;
+        }
+        .stAlert {
+            text-align: center;
+        }
+        .row-widget.stButton {
+            display: flex;
+            justify-content: center;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+st.title("📂 Tratamento Planilha FGMO")
+st.info("Insira a planilha de PO (itens) do jeito que ela vem abaixo.")
+st.markdown("---")
+
+uploaded_file = st.file_uploader("1. Anexe a planilha original (.xlsx)", type=["xlsx"])
+
+
 # --- LÓGICA DE MANIPULAÇÃO DA PLANILHA ---
 def converter_letra_para_indice(letra):
     """Converte letras de colunas do Excel (A, B, Y...) para índice base-0 do Pandas."""
@@ -57,7 +91,6 @@ def tratar_planilha(df_origem):
     if 'FATURA' in df_dados.columns:
         df_final['FATURA'] = df_dados['FATURA']
     else:
-        # Caso o arquivo não venha com cabeçalho de nome, assume a busca pela coluna 'FATURA' ou primeira coluna
         st.warning("Coluna 'FATURA' não encontrada pelo nome exato. Verifique se o nome do cabeçalho na planilha de origem está correto.")
         df_final['FATURA'] = df_dados.iloc[:, 0]
 
@@ -69,7 +102,7 @@ def tratar_planilha(df_origem):
     )
 
     # 4. Coluna C: QUANTIDADE (Origem Coluna F)
-    df_final['QUANTIDADE'] = df_dados.iloc[:, converter_letra_para_indice('F')]
+    df_final['QUANTIDADE'] = df_dados.iloc[:, converter_let_para_indice('F')]
 
     # 5. Coluna D: PESOUNITARIO (Origem Coluna G)
     df_final['PESOUNITARIO'] = df_dados.iloc[:, converter_letra_para_indice('G')]
@@ -89,16 +122,13 @@ def tratar_planilha(df_origem):
     return df_final
 
 
-# --- INTERFACE DO USUÁRIO (STREAMLIT) ---
-st.set_page_config(page_title="Tratador de Faturas", layout="wide")
-st.title("📂 Tratamento planilha FGMO")
-st.info("Insira a planilha de PO (itens) do jeito que ela vem abaixo.")
-st.markdown("---")
-
-uploaded_file = st.file_uploader("1. Anexe a planilha original (.xlsx)", type=["xlsx"])
-
 if uploaded_file:
-    if st.button("🚀 Processar e Gerar Download"):
+    # Centralizando o botão de processamento com colunas do Streamlit
+    col_vazia1, col_botao, col_vazia2 = st.columns([1, 2, 1])
+    with col_botao:
+        processar = st.button("🚀 Processar e Gerar Download", use_container_width=True)
+
+    if processar:
         try:
             # Lê mantendo a primeira linha como cabeçalho para identificar a coluna "FATURA"
             df_input = pd.read_excel(uploaded_file)
@@ -110,18 +140,22 @@ if uploaded_file:
 
                 st.success("Planilha tratada com sucesso!")
                 st.subheader("Pré-visualização dos Dados:")
-                st.dataframe(df_resultado.head(10))
+                st.dataframe(df_resultado.head(10), use_container_width=True)
 
                 # Preparar o arquivo final em memória para o download
                 output = BytesIO()
                 with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                     df_resultado.to_excel(writer, index=False, sheet_name='Tratado')
 
-                st.download_button(
-                    label="📥 Baixar Planilha Tratada",
-                    data=output.getvalue(),
-                    file_name="Planilha_Tratada.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
+                # Centralizando o botão de download também
+                col_down1, col_down2, col_down3 = st.columns([1, 2, 1])
+                with col_down2:
+                    st.download_button(
+                        label="📥 Baixar Planilha Tratada",
+                        data=output.getvalue(),
+                        file_name="Planilha_Tratada.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        use_container_width=True
+                    )
         except Exception as e:
             st.error(f"Erro ao processar o arquivo: {e}")
