@@ -15,15 +15,13 @@ def monitorar_conexoes():
     SÓ encerra o processo se estiver rodando localmente como EXECUTÁVEL.
     Se detectar o ambiente do Streamlit Cloud (GitHub), deixa o servidor em paz.
     """
-    # Detecta se está na nuvem do Streamlit (Linux/Adminuser)
     is_cloud = os.environ.get("STREAMLIT_SERVER_HEADLESS") == "true" or os.path.exists("/home/adminuser")
 
     if is_cloud:
-        return  # Aborta o monitoramento para não derrubar o deploy online
+        return
 
-    # Se for o executável local do Windows, mantém o monitoramento
     while True:
-        time.sleep(10)  # Checa a cada 10 segundos
+        time.sleep(10)
         try:
             runtime = get_instance()
             sessions = runtime._session_mgr.list_active_sessions()
@@ -48,21 +46,26 @@ def converter_letra_para_indice(letra):
     return resultado - 1
 
 
-def tratar_planilha(df_origem, num_fatura):
+def tratar_planilha(df_origem):
     df_final = pd.DataFrame()
 
     # Filtra apenas linhas onde a coluna A original (índice 0) tenha conteúdo válido
     mask = df_origem.iloc[:, 0].notna()
     df_dados = df_origem[mask].copy()
 
-    # 1 e 2. Coluna A: FATURA (Preenchida com o número fornecido pelo usuário)
-    df_final['FATURA'] = [num_fatura] * len(df_dados)
+    # 1 e 2. Coluna FATURA: Busca pela coluna nomeada 'FATURA' no arquivo original
+    if 'FATURA' in df_dados.columns:
+        df_final['FATURA'] = df_dados['FATURA']
+    else:
+        # Caso o arquivo não venha com cabeçalho de nome, assume a busca pela coluna 'FATURA' ou primeira coluna
+        st.warning("Coluna 'FATURA' não encontrada pelo nome exato. Verifique se o nome do cabeçalho na planilha de origem está correto.")
+        df_final['FATURA'] = df_dados.iloc[:, 0]
 
     # 3. Coluna B: PARTNUMBER (Origem Coluna A + " - " + Origem Coluna Y)
     idx_a = converter_letra_para_indice('A')
     idx_y = converter_letra_para_indice('Y')
     df_final['PARTNUMBER'] = (
-            df_dados.iloc[:, idx_a].astype(str) + " - " + df_dados.iloc[:, idx_y].astype(str)
+        df_dados.iloc[:, idx_a].astype(str) + " - " + df_dados.iloc[:, idx_y].astype(str)
     )
 
     # 4. Coluna C: QUANTIDADE (Origem Coluna F)
@@ -92,23 +95,18 @@ st.title("📂 Tratamento planilha FGMO")
 st.info("Insira a planilha de PO (itens) do jeito que ela vem abaixo.")
 st.markdown("---")
 
-col1, col2 = st.columns(2)
-with col1:
-    uploaded_file = st.file_uploader("1. Anexe a planilha original (.xlsx)", type=["xlsx"])
-with col2:
-    num_fatura = st.text_input("2. Digite o número da FATURA:")
+uploaded_file = st.file_uploader("1. Anexe a planilha original (.xlsx)", type=["xlsx"])
 
-if uploaded_file and num_fatura:
+if uploaded_file:
     if st.button("🚀 Processar e Gerar Download"):
         try:
-            # skiprows=1 pula a primeira linha (Cabeçalho da planilha original)
-            # header=None força o Pandas a indexar por números (0, 1, 2...)
-            df_input = pd.read_excel(uploaded_file, skiprows=1, header=None)
+            # Lê mantendo a primeira linha como cabeçalho para identificar a coluna "FATURA"
+            df_input = pd.read_excel(uploaded_file)
 
             if df_input.empty:
-                st.error("A planilha anexada não possui dados válidos após a linha 1.")
+                st.error("A planilha anexada não possui dados válidos.")
             else:
-                df_resultado = tratar_planilha(df_input, num_fatura)
+                df_resultado = tratar_planilha(df_input)
 
                 st.success("Planilha tratada com sucesso!")
                 st.subheader("Pré-visualização dos Dados:")
@@ -122,7 +120,7 @@ if uploaded_file and num_fatura:
                 st.download_button(
                     label="📥 Baixar Planilha Tratada",
                     data=output.getvalue(),
-                    file_name=f"Fatura_{num_fatura}.xlsx",
+                    file_name="Planilha_Tratada.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
         except Exception as e:
